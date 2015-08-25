@@ -33,6 +33,11 @@ body {
     outline: none;
 }
 
+/* ChatUserList */
+.ChatUserList {
+    color: #000000;
+}
+
 /* Animation */
 
 .rotate {
