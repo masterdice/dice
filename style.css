@@ -9,6 +9,7 @@ body {
 }
 .navbar .brand-name:hover {
     text-decoration: underline;
+    color: #000000;
 }
 
 /* ChatBox */
@@ -17,6 +18,7 @@ body {
     overflow-y: scroll;
     height: 215px;
     word-wrap: break-word;
+    color: #000000;
 }
 
 .chat-list li {
