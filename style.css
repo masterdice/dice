@@ -1,7 +1,7 @@
 body {
     margin-top: 20px;
-    background-color: #B2B2CC;
-    /* color: #FFFFFF; */
+    background-color: #14141F;
+    color: #FFFFFF;
 }
 
 .navbar .navbar-brand {
@@ -14,14 +14,9 @@ body {
 
 /* BetBox */
 .lead {
-    color: #339966;
+    color: #FFFFFF;
 }
-.form-group {
-    color: #CC99FF;
-}
-.input-group {
-    color: #7B7B78;
-}
+
 
 /* ChatBox */
 
@@ -29,7 +24,7 @@ body {
     overflow-y: scroll;
     height: 215px;
     word-wrap: break-word;
-    /* color: #000000; */
+    color: #000000;
 }
 
 .chat-list li {
