@@ -13,9 +13,16 @@ body {
 }
 
 /* BetBox */
-.BetBox {
-    color: #0000FF;
+.lead {
+    color: #339966;
 }
+.form-group {
+    color: #CC99FF;
+}
+.input-group {
+    color: #7B7B78;
+}
+
 /* ChatBox */
 
 .chat-list {
