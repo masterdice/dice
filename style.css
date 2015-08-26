@@ -16,7 +16,9 @@ body {
 .lead {
     color: #000000;
 }
-
+.mbb {
+    background-color: #9999EB;
+}
 
 /* ChatBox */
 .chat-list {
@@ -25,15 +27,22 @@ body {
     word-wrap: break-word;
     color: #000000;
 }
+.mcb {
+    background-color: #9999EB;
+}
+.cul {
+    color: #000000;
+}
 
 .chat-list li {
     /* Since .focus() is used to scroll to last message item,
        turn off the outline that appears by default */
     outline: none;
+    color: #000000;
 }
 
 /* ChatUserList */
-.UserList {
+.cul {
     color: #000000;
 }
 
