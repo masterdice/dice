@@ -14,15 +14,14 @@ body {
 
 /* BetBox */
 .lead {
-    background-color: #FFFFBF;
     color: #000000;
 }
 
-.BetBox {
+#BetBox {
     background-color: #9999EB;
 }
 /* ChatBox */
-.ChatBox {
+#ChatBox {
     background-color: #9999EB;
 }
 .chat-list {
