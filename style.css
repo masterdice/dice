@@ -14,12 +14,17 @@ body {
 
 /* BetBox */
 .lead {
+    background-color: #FFFFBF;
     color: #000000;
 }
 
-
+.BetBox {
+    background-color: #9999EB;
+}
 /* ChatBox */
-
+.ChatBox {
+    background-color: #9999EB;
+}
 .chat-list {
     overflow-y: scroll;
     height: 215px;
