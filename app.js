@@ -925,7 +925,7 @@ var ChatUserList = React.createClass({
   render: function() {
     return (
       el.div(
-        {className: 'panel panel-default'},
+        {className: 'panel panel-default cul'},
         el.div(
           {className: 'panel-heading'},
           'UserList'
@@ -994,7 +994,7 @@ var ChatBox = React.createClass({
     return el.div(
       {id: 'chat-box'},
       el.div(
-        {className: 'panel panel-default'},
+        {className: 'panel panel-default mcb'},
         el.div(
           {className: 'panel-body'},
           el.ul(
@@ -1577,7 +1577,7 @@ var BetBox = React.createClass({
     return el.div(
       null,
       el.div(
-        {className: 'panel panel-default'},
+        {className: 'panel panel-default mbb'},
         el.div(
           {className: 'panel-body'},
           el.div(
