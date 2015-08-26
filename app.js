@@ -505,9 +505,14 @@ var betStore = new Store('bet', {
       self.state.wager.num = n;
     } else {
       // wagerString is valid
-      self.state.wager.error = null;
-      self.state.wager.str = n.toString();
-      self.state.wager.num = n;
+      if ((n * 100) > 1000){
+        self.state.wager.error = 'CANNOT_AFFORD_WAGER';
+        self.state.wager.num = n;
+      } else {
+        self.state.wager.error = null;
+        self.state.wager.str = n.toString();
+        self.state.wager.num = n;
+      }
     }
 
     self.emitter.emit('change', self.state);
