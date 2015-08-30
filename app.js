@@ -487,13 +487,23 @@ var betStore = new Store('bet', {
       num: 2.00,
       error: undefined
   },
+  multiOnLose: {
+    str: '1',
+    error: undefined
+  },
+  clientSeed: {
+    str: '1337',
+    num: 1337,
+    error:void 0
+  },
   showAutomaticRoll: false,
   automaticToggle: false,
-  increaseOnWin: false,
-  increaseOnLose: false,
-  multiOnWin:0,
-  multiOnLose:0,
+  increaseOnWin: true,
+  increaseOnLose: true,
+  multiOnWin: 0,
   betCounter: 1,
+  stopMaxBalance: '',
+  stopMinBalance: '',
   checkBoxNumberOfBet: 'false',
   checkSpeedOfBet : 'false',
   disableNumberOfBet: false,
@@ -543,10 +553,26 @@ var betStore = new Store('bet', {
         self.state.wager.error = null;
         self.state.wager.str = n.toString();
         self.state.wager.num = n;
+        if (!betStore.state.automaticToggle) {
+          self.state.profitGained.num = self.state.wager.num;
+        }
       }
     }
 
     self.emitter.emit('change', self.state);
+  });
+
+  Dispatcher.registerCallback("UPDATE_CLIENT_SEED",function(t){
+    var n = parseInt(t ,10);
+    isNaN(n)||/[^\d]/.test(n.toString())?
+    self.state.clientSeed.error = "NOT_INTEGER":0>n?
+    self.state.clientSeed.error = "TOO_LOW":
+    n > Math.pow(2, 32) - 1?
+    self.state.clientSeed.error = "TOO_HIGH":(
+    self.state.clientSeed.error = void 0,
+    self.state.clientSeed.str = n.toString(),
+    self.state.clientSeed.num = n),
+    self.emitter.emit("change", self.state)
   });
 
   Dispatcher.registerCallback('UPDATE_AUTOMATIC_WAGER', function(newWager) {
@@ -586,9 +612,25 @@ var betStore = new Store('bet', {
     Dispatcher.registerCallback('AUTOMATE_TOGGLE_ROLL', function() {
         console.log('[BetStore] received AUTOMATE_TOGGLE_ROLL');
         betStore.state.automaticToggle = true;
+        var balance = worldStore.state.user.balance / 100;
+        var stop = false;
         if(betStore.state.checkBoxNumberOfBet === 'true' && betStore.state.betCounter == self.state.NumberOfBetLimit.str){
-            Dispatcher.sendAction('STOP_ROLL');
-        }else{
+            stop = true;
+        } 
+        if (!isNaN(parseInt(betStore.state.stopMinBalance))) {
+            if (betStore.state.stopMinBalance >= balance) {
+              stop = true;
+            }
+        }
+        if (!isNaN(parseInt(betStore.state.stopMaxBalance))) {
+            if (betStore.state.stopMaxBalance <= balance) {
+              stop = true;
+            }
+        }
+        if (stop) {
+          Dispatcher.sendAction("STOP_ROLL");
+          setTimeout(console.log('delayed'), 1000);
+        }else {
             betStore.state.betCounter++;
         }
         self.emitter.emit('change', self.state);
@@ -597,8 +639,8 @@ var betStore = new Store('bet', {
     Dispatcher.registerCallback('TOGGLE_SHOW_AUTOMATIC_ROLL', function() {
         console.log('[BetStore] received TOGGLE_SHOW_AUTOMATIC_ROLL');
         betStore.state.showAutomaticRoll = !betStore.state.showAutomaticRoll;
-        betStore.state.increaseOnWin = false;
-        betStore.state.increaseOnLose = false;
+        betStore.state.increaseOnWin = true;
+        betStore.state.increaseOnLose = true;
         betStore.state.checkBoxNumberOfBet = false;
         self.emitter.emit('change', self.state);
     });
@@ -614,14 +656,6 @@ var betStore = new Store('bet', {
     });
     
     
-    Dispatcher.registerCallback("SET_INCREASE_ON_WIN", function(increaseOnWin){
-        betStore.state.increaseOnWin = increaseOnWin;
-        self.emitter.emit('change', self.state);
-    });
-    Dispatcher.registerCallback("SET_INCREASE_ON_LOSE", function(increaseOnLose){
-        betStore.state.increaseOnLose = increaseOnLose;
-        self.emitter.emit('change', self.state);
-    });
     Dispatcher.registerCallback("AUGMENT_PROFIT", function(multi){
         var profitQuantity = betStore.state.profitGained.num * Number(multi);
         var balanceQuantity = worldStore.state.user.balance / 100;
@@ -633,13 +667,48 @@ var betStore = new Store('bet', {
         }
         self.emitter.emit('change', self.state);
     });
+    Dispatcher.registerCallback("RETURN_BASE_BET", function(){
+        betStore.state.profitGained.num = betStore.state.wager.num;
+    });
     Dispatcher.registerCallback("SET_MULTI_ON_WIN", function(multiOnWin){
-        betStore.state.multiOnWin = multiOnWin;
+        var n = parseInt(multiOnWin, 10);
+        if (isNaN(n) || /[^\d]/.test(n.toString())) {
+          betStore.state.multiOnWin = '';
+          self.state.multiOnLose.error = 'INVALID_AUTO_MULTIPLIER';
+        }else {
+          self.state.multiOnLose.error = null;
+          betStore.state.multiOnWin = n;
+        }
         self.emitter.emit('change', self.state);
     });
     Dispatcher.registerCallback("SET_MULTI_ON_LOSE", function(multiOnLose){
-        betStore.state.multiOnLose = multiOnLose;
+        var n = parseInt(multiOnLose, 10);
+        if (isNaN(n) || /[^\d]/.test(n.toString())) {
+          betStore.state.multiOnLose.str = '';
+          betStore.state.multiOnLose.error = 'INVALID_AUTO_MULTIPLIER';
+        }else {
+          betStore.state.multiOnLose.error = null;
+          betStore.state.multiOnLose.str = n;
+        }
         self.emitter.emit('change', self.state);
+    });
+    Dispatcher.registerCallback("SET_STOP_MAX_BALANCE", function(stopMaxBalance){
+      var n = parseInt(stopMaxBalance, 10);
+      if (isNaN(n) || /[^\d]/.test(n.toString())) {
+        betStore.state.stopMaxBalance = '';
+      }else {
+        betStore.state.stopMaxBalance = n;
+      }
+      self.emitter.emit('change', self.state);
+    });
+    Dispatcher.registerCallback("SET_STOP_MIN_BALANCE", function(stopMinBalance){
+      var n = parseInt(stopMinBalance, 10);
+      if (isNaN(n) || /[^\d]/.test(n.toString())) {
+        betStore.state.stopMinBalance = '';
+      }else {
+        betStore.state.stopMinBalance = n;
+      }
+      self.emitter.emit('change', self.state);
     });
     
     Dispatcher.registerCallback("STOP_ROLL", function(){
@@ -1411,7 +1480,6 @@ var BetBoxWager = React.createClass({
   _onDoubleWager: function() {
     var n = betStore.state.wager.num * 2;
     Dispatcher.sendAction('UPDATE_WAGER', { str: n.toString() });
-
   },
   _onMaxWager: function() {
     // If user is logged in, use their balance as max wager
@@ -1531,7 +1599,7 @@ var BetBoxButton = React.createClass({
 
       var params = {
         wager: wagerSatoshis,
-        client_seed: 0, // TODO
+        client_seed: betStore.state.clientSeed.num,
         hash: hash,
         cond: cond,
         target: number,
@@ -1587,7 +1655,7 @@ var BetBoxButton = React.createClass({
     var innerNode;
 
     // TODO: Create error prop for each input
-    var error = betStore.state.wager.error || betStore.state.multiplier.error;
+    var error = betStore.state.wager.error || betStore.state.multiplier.error || betStore.state.clientSeed.error;
 
     if (worldStore.state.isLoading) {
       // If app is loading, then just disable button until state change
@@ -1604,7 +1672,8 @@ var BetBoxButton = React.createClass({
         'INVALID_MULTIPLIER': 'Invalid multiplier',
         'MULTIPLIER_TOO_PRECISE': 'Multiplier too precise',
         'MULTIPLIER_TOO_HIGH': 'Multiplier too high',
-        'MULTIPLIER_TOO_LOW': 'Multiplier too low'
+        'MULTIPLIER_TOO_LOW': 'Multiplier too low',
+
       };
 
       innerNode = el.button(
@@ -1717,6 +1786,11 @@ var BetBox = React.createClass({
   componentWillUnmount: function() {
     worldStore.off('change', this._onStoreChange);
   },
+  _onClientSeedChange:function(e){
+    var str = e.target.value;
+    Dispatcher.sendAction("UPDATE_CLIENT_SEED", str);
+    this.forceUpdate();
+  },
   render: function() {
     return el.div(
       null,
@@ -1754,6 +1828,33 @@ var BetBox = React.createClass({
                 React.createElement(BetBoxChance, null)
               )
             ),
+            el.div(
+              {className:'row'},
+              el.div(
+                {className: 'col-xs-2'},
+                ' '
+              ),
+              el.div(
+                {className: 'col-xs-8', style:{textAlign:'center'}},
+                el.span(
+                  {className:'lead', style:{fontWeight:'bold'}},
+                  'Client Seed'
+                ),
+                el.input(
+                  {
+                    type: 'text',
+                    value: betStore.state.clientSeed.str,
+                    onChange: this._onClientSeedChange,
+                    className: 'form-control input-lg'
+                  }
+                )
+              ),
+              el.div(
+                {className: 'col-xs-2'},
+                ' '
+              )
+            ),
+            el.br(),
             //Autobet
             el.div(
               {className:'row'},
@@ -1798,23 +1899,21 @@ var ToggleAutomaticRoll1 = React.createClass({
     },
   _displayAutomatic: function(){
         Dispatcher.sendAction("TOGGLE_SHOW_AUTOMATIC_ROLL");
+        Dispatcher.sendAction('START_REFRESHING_USER');
         this.forceUpdate();
   },
   render: function() { 
     return  el.div(null,
-                el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
-                    el.h5(null,el.span(null, "Auto-Bet"))
-            ),
-                el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
                     el.div({className:'buttonMoreCenter'},
-                        el.a(
+                        el.button(
                               {
                                     onClick: this._displayAutomatic,
-                                    className: 'btn buttonMore',
+                                    className: 'btn btn-lg btn-success btn-block',
                                     type: 'button',
                                     id: 'displayAutomatic'
                               },
-                              !betStore.state.showAutomaticRoll ? '+' : '-'
+                              !betStore.state.showAutomaticRoll ? 'Show Autobet' : 'Hide Autobet'
                             )
                     )
             )
@@ -1846,24 +1945,20 @@ var ToggleAutomaticRoll = React.createClass({
       Dispatcher.sendAction("SET_AUTOMATIC_NUMBER_OF_BETS", e.currentTarget.value);
       this.forceUpdate();
   },
-  _increaseOnLose: function(e){
-      Dispatcher.sendAction("SET_INCREASE_ON_LOSE", e.currentTarget.value);
-      this.forceUpdate();
-  },
-    _increaseOnWin: function(e){
-        Dispatcher.sendAction("SET_INCREASE_ON_WIN", e.currentTarget.value);
-        this.forceUpdate();
-  },
   _stopRoll: function(){
       Dispatcher.sendAction("STOP_ROLL");
-  },
-  _setMultiOnWin: function(e){
-      Dispatcher.sendAction("SET_MULTI_ON_WIN", e.currentTarget.value);
-      this.forceUpdate();
   },
   _setMultiOnLose: function(e){
       Dispatcher.sendAction("SET_MULTI_ON_LOSE", e.currentTarget.value);
       this.forceUpdate();
+  },
+  _setStopMaxBalance: function(e){
+    Dispatcher.sendAction("SET_STOP_MAX_BALANCE", e.currentTarget.value);
+    this.forceUpdate();
+  },
+  _setStopMinBalance: function(e){
+    Dispatcher.sendAction("SET_STOP_MIN_BALANCE", e.currentTarget.value);
+    this.forceUpdate();
   },
   _newLimitNumberOfBet: function(e){
       console.log(betStore.state.disableNumberOfBet + "nuevo limite");
@@ -1880,102 +1975,96 @@ var ToggleAutomaticRoll = React.createClass({
         return function(e) {
                 $('#wagerCoinState').attr('disabled','true');
                 Dispatcher.sendAction('AUTOMATE_TOGGLE_ROLL');
-                console.log('Placing bet...');
-    
-                // Indicate that we are waiting for server response
-                self.setState({ waitingForServer: true });
-                var profitBet;
-                var hash = betStore.state.nextHash;
-                console.assert(typeof hash === 'string');
-                
-                var wagerSatoshis = betStore.state.profitGained.num * 100;
-                var multiplier = betStore.state.multiplier.num;
-                var payoutSatoshis = wagerSatoshis * multiplier;
-                
-                var number = helpers.calcNumber(
-                cond, helpers.multiplierToWinProb(multiplier)
-                );
-                
-                var params = {
-                    wager: wagerSatoshis,
-                    client_seed: 0, // TODO
-                    hash: hash,
-                    cond: cond,
-                    target: number,
-                    payout: payoutSatoshis
-                };
-
-                MoneyPot.placeSimpleDiceBet(params, {
-                success: function(bet) {
-                  console.log('Successfully placed bet:', bet);
-                  // Append to bet list
-                  profitBet = bet.profit;
-                  // We don't get this info from the API, so assoc it for our use
-                  bet.meta = {
-                    cond: cond,
-                    number: number,
-                    hash: hash,
-                    isFair: CryptoJS.SHA256(bet.secret + '|' + bet.salt).toString() === hash
-                  };
+                if(betStore.state.automaticToggle){
+                  console.log('Placing bet...');
+      
+                  // Indicate that we are waiting for server response
+                  self.setState({ waitingForServer: true });
+                  var profitBet;
+                  var hash = betStore.state.nextHash;
+                  console.assert(typeof hash === 'string');
                   
-                  Dispatcher.sendAction('CHANGE_TAB', 'MY_BETS');
-                  Dispatcher.sendAction('NEW_BET', bet);
-                
-                  // Update next bet hash
-                  Dispatcher.sendAction('SET_NEXT_HASH', bet.next_hash);
-                
-                  // Update user balance
-                  Dispatcher.sendAction('UPDATE_USER', {
-                    balance: worldStore.state.user.balance + bet.profit
-                  });
-                },
-                error: function(xhr) {
-                  console.log('Error');
-                  if (xhr.responseJSON && xhr.responseJSON) {
-                    alert(xhr.responseJSON.error);
-                  } else {
-                    alert('Internal Error');
-                  }
-                },
-                complete: function() {
-                    setTimeout(function() {
-                        self.setState({ waitingForServer: false });
-                        $('#wagerCoinState').attr('disabled',false);
-                        // Force re-validation of wager
-                        Dispatcher.sendAction('UPDATE_WAGER', {
-                            str: betStore.state.wager.str
-                        });
-                        if(betStore.state.automaticToggle){
-                           
-                                if(profitBet > 0){
-                                    if(betStore.state.increaseOnWin == "true"){
-                                        Dispatcher.sendAction('AUGMENT_PROFIT', betStore.state.multiOnWin);
-                                    }else{
-                                        Dispatcher.sendAction('RETURN_BASE_BET');
-                                    }
-                                }else{
-                                    if(betStore.state.increaseOnLose == "true"){
-                                        Dispatcher.sendAction('AUGMENT_PROFIT', betStore.state.multiOnLose);
-                                    }else{
-                                        Dispatcher.sendAction('RETURN_BASE_BET');
-                                    }
-                                }
-                                if(betStore.state.automaticToggle){
-                                    
-                                        if(cond === '<'){
-                                            $('#automateBet-lo')[0].click();
-                                        }else if(cond === '>') {
-                                            $('#automateBet-hi')[0].click();
-                                        }
-                                    
-                                }
-                          
-                            
-                        }
-                    }.bind(this), betStore.state.betVelocity);
+                  var wagerSatoshis = betStore.state.profitGained.num * 100;
+                  var multiplier = betStore.state.multiplier.num;
+                  var payoutSatoshis = wagerSatoshis * multiplier;
+                  
+                  var number = helpers.calcNumber(
+                  cond, helpers.multiplierToWinProb(multiplier)
+                  );
+                  
+                  var params = {
+                      wager: wagerSatoshis,
+                      client_seed: betStore.state.clientSeed.num,
+                      hash: hash,
+                      cond: cond,
+                      target: number,
+                      payout: payoutSatoshis
+                  };
+
+                  MoneyPot.placeSimpleDiceBet(params, {
+                  success: function(bet) {
+                    console.log('Successfully placed bet:', bet);
+                    // Append to bet list
+                    profitBet = bet.profit;
+                    // We don't get this info from the API, so assoc it for our use
+                    bet.meta = {
+                      cond: cond,
+                      number: number,
+                      hash: hash,
+                      isFair: CryptoJS.SHA256(bet.secret + '|' + bet.salt).toString() === hash
+                    };
                     
+                    Dispatcher.sendAction('CHANGE_TAB', 'MY_BETS');
+                    Dispatcher.sendAction('NEW_BET', bet);
+                  
+                    // Update next bet hash
+                    Dispatcher.sendAction('SET_NEXT_HASH', bet.next_hash);
+                  
+                    // Update user balance
+                    Dispatcher.sendAction('UPDATE_USER', {
+                      balance: worldStore.state.user.balance + bet.profit
+                    });
+                  },
+                  error: function(xhr) {
+                    console.log('Error');
+                    if (xhr.responseJSON && xhr.responseJSON) {
+                      alert(xhr.responseJSON.error);
+                    } else {
+                      alert('Internal Error');
+                    }
+                  },
+                  complete: function() {
+                      setTimeout(function() {
+                          self.setState({ waitingForServer: false });
+                          $('#wagerCoinState').attr('disabled',false);
+                          // Force re-validation of wager
+                          Dispatcher.sendAction('UPDATE_WAGER', {
+                            str: betStore.state.wager.str
+                          });
+                          
+                             
+                              if(profitBet > 0) {
+                                  Dispatcher.sendAction('RETURN_BASE_BET');
+                              }else{
+                                  Dispatcher.sendAction('AUGMENT_PROFIT', betStore.state.multiOnLose.str);
+                              }
+                              if(betStore.state.automaticToggle){
+                                  
+                                      if(cond === '<'){
+                                          $('#automateBet-lo')[0].click();
+                                      }else if(cond === '>') {
+                                          $('#automateBet-hi')[0].click();
+                                      }
+                                  
+                              }
+                            
+                              
+                          
+                      }.bind(this), betStore.state.betVelocity);
+                      
+                  }
+                  });
                 }
-                });
            
         };
     },
@@ -1998,10 +2087,13 @@ var ToggleAutomaticRoll = React.createClass({
                 'INVALID_MULTIPLIER': 'Invalid multiplier',
                 'MULTIPLIER_TOO_PRECISE': 'Multiplier too precise',
                 'MULTIPLIER_TOO_HIGH': 'Multiplier too high',
-                'MULTIPLIER_TOO_LOW': 'Multiplier too low'
+                'MULTIPLIER_TOO_LOW': 'Multiplier too low',
+                'INVALID_AUTO_MULTIPLIER': 'Invalid multi on loss'
               };
-            
-              betHiLowNode = el.button(
+              
+              betHiLowNode = 
+              el.br(),
+              el.button(
                 {type: 'button',
                  disabled: true,
                  className: 'btn btn-lg btn-block btn-danger'},
@@ -2009,31 +2101,32 @@ var ToggleAutomaticRoll = React.createClass({
               );
             } else if (worldStore.state.user) {
                 betHiLowNode =
-                el.ul({className:'row'},
-                    el.li({className: 'col-lg-6 col-md-6 col-sm-6 col-xs-6'},
-                    el.a(
+                el.div({className:'row'},
+                    el.br(),
+                    el.div({className: 'col-lg-6 col-md-6 col-sm-6 col-xs-6'},
+                    el.button(
                       {
-                            type:'button',
-                      className: 'blue',
+                      type:'button',
+                      className: 'btn btn-lg btn-primary btn-block',
                       id: 'automateBet-hi',
                       onClick: this._makeBetHandler('>')
                       },
                       el.span({className: 'bets unselectable', style:{position:'relative'}},
-                        el.span(null,"Go Auto Hi"),
+                        el.span(null,"Go Auto Hi "),
                         el.span({className: 'unselectable autoRateWin'}, '>'+helpers.calcNumber('>',winProb).toFixed(2))
                       )
                     )
                   ),
-                  el.li({className: 'col-lg-6 col-md-6 col-sm-6 col-xs-6'},
-                    el.a(
+                  el.div({className: 'col-lg-6 col-md-6 col-sm-6 col-xs-6'},
+                    el.button(
                       {
-                            type:'button',
-                      className: 'blue',
+                      type:'button',
+                      className: 'btn btn-lg btn-primary btn-block',
                       id: 'automateBet-lo',
                       onClick: this._makeBetHandler('<')
                       },
                       el.span({className: 'bets unselectable', style:{position:'relative'}},
-                        el.span(null,"Go Auto Lo"),
+                        el.span(null,"Go Auto Lo "),
                         el.span({className: 'unselectable autoRateWin'}, '<'+helpers.calcNumber('<',winProb).toFixed(2))
                       )
                     )
@@ -2052,8 +2145,9 @@ var ToggleAutomaticRoll = React.createClass({
                 );
             }
       var buttonStopNode = 
-              el.ul({className:'row'},
-              el.li({className: 'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+              el.div({className:'row'},
+              el.br(),
+              el.div({className: 'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
                         
                         el.input(
                             {
@@ -2067,18 +2161,18 @@ var ToggleAutomaticRoll = React.createClass({
                 );
       
     return  el.div(null,
-                el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
                     el.div({className:'automateBackground'},
                             (this.state.waitingForServer) ? buttonStopNode : betHiLowNode
                     )
                   ),
-                  el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                  el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
                       el.p(null, "Limit number of Bets")
                   ),
-                el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
                     el.div({className:'automateBackground'},
-                        el.ul({className:'row'},
-                            el.li({className:'col-lg-5 col-md-5 col-sm-6 col-xs-6'},
+                        el.div({className:'row'},
+                            el.div({className:'col-lg-5 col-md-5 col-sm-6 col-xs-6'},
                                 el.input(
                                     {
                                             id: 'radioStyle',
@@ -2097,7 +2191,7 @@ var ToggleAutomaticRoll = React.createClass({
                                        
                                     )
                                 ),
-                                el.li({className:'col-lg-7 col-md-7 col-sm-6 col-xs-6'},
+                                el.div({className:'col-lg-7 col-md-7 col-sm-6 col-xs-6'},
                                 el.input(
                                     {
                                        id: 'radioStyle',
@@ -2111,126 +2205,100 @@ var ToggleAutomaticRoll = React.createClass({
                                         el.span(null,
                                             el.span(null)
                                         ),
-                                        el.label(null, "Amount")
+                                        el.label(null, "Limit")
                                     ),
-                                    el.input(
-                                        {
-                                            type:'text',
-                                            className:'autoAmount',
-                                            value: betStore.state.NumberOfBetLimit.str,
-                                            onChange: this._newLimitNumberOfBet,
-                                            disabled: betStore.state.disableNumberOfBet
-                                        }
+                                    el.div(
+                                      {className: 'input-group'},
+                                      el.input(
+                                          {
+                                              type:'text',
+                                              className:'autoAmount form-control input-lg',
+                                              value: betStore.state.NumberOfBetLimit.str,
+                                              onChange: this._newLimitNumberOfBet,
+                                              disabled: betStore.state.disableNumberOfBet
+                                          }
+                                      ),
+                                      el.span(
+                                        {className: 'input-group-addon'},
+                                        'Bets'
+                                      )
                                     )
                                 )
                             )
                       )   
                   ),
-                  el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
-                      el.p(null, "On Lose")
+                  el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                      el.p(null, "Multiplier On Loss")
                   ),
-                el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
                     el.div({className:'automateBackground'},
-                        el.ul({className:'row'},
-                            el.li({className:'col-lg-5 col-md-5 col-sm-6 col-xs-6'},
-                                el.input(
-                                    {
-                                       id: 'radioStyle',
-                                       name: 'returnOnWin',
-                                       type: 'radio',
-                                       defaultChecked: "checked",
-                                       onChange: this._increaseOnLose,
-                                       value: false
-                                    }
-                                    ),
-                                    el.label({className:'radioPureCSS1'},
-                                        el.span(null,
-                                            el.span(null)
-                                        ),
-                                        el.label(null, "Return to Base")
-                                       
-                                    )
-                                ),
-                                el.li({className:'col-lg-7 col-md-7 col-sm-6 col-xs-6'},
-                                el.input(
-                                    {
-                                       id: 'radioStyle',
-                                       name: 'returnOnWin',
-                                       type: 'radio',
-                                       onChange: this._increaseOnLose,
-                                       value: true
-                                    }
-                                    ),
-                                    el.label({className:'radioPureCSS1'},
-                                        el.span(null,
-                                            el.span(null)
-                                        ),
-                                        el.label(null, "Increase Bet")
-                                    ),
-                                    el.label({className:'autoRollInputLabel'}, "x"),
+                        el.div({className:'row'},
+                            el.div({className: 'col-lg-3 col-md-3 col-sm-3 col-xs-3'}, ' '),
+                            el.div({className:'col-lg-6 col-md-6 col-sm-6 col-xs-6 input-group'},
                                     el.input(
                                         {
                                             type:'text',
-                                            className:'returnAmount',
+                                            className:'returnAmount form-control input-lg',
                                             onChange: this._setMultiOnLose,
-                                            value: betStore.state.multiOnLose
+                                            value: betStore.state.multiOnLose.str
                                         }
+                                    ),
+                                    el.span(
+                                        {className: 'input-group-addon'},
+                                        'X'
                                     )
-                                )
+                              ),
+                              el.div({className: 'col-lg-3 col-md-3 col-sm-3 col-xs-3'}, ' ')
                             )
                       )   
                   ),
-                  el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
-                      el.p(null, "On Win")
+                  el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                      el.p(null, "Stop if balance >")
                   ),
-                el.li({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
                     el.div({className:'automateBackground'},
-                        el.ul({className:'row'},
-                            el.li({className:'col-lg-5 col-md-5 col-sm-6 col-xs-6'},
-                                el.input(
-                                    {
-                                       id: 'radioStyle',
-                                       name: 'returnOnLose',
-                                       type: 'radio',
-                                       defaultChecked: "checked",
-                                       onChange: this._increaseOnWin,
-                                       value: false
-                                    }
-                                    ),
-                                    el.label({className:'radioPureCSS1'},
-                                        el.span(null,
-                                            el.span(null)
-                                        ),
-                                        el.label(null, "Return to Base")
-                                       
-                                    )
-                                ),
-                                el.li({className:'col-lg-7 col-md-7 col-sm-6 col-xs-6'},
-                                el.input(
-                                    {
-                                       id: 'radioStyle',
-                                       name: 'returnOnLose',
-                                       type: 'radio',
-                                       onChange: this._increaseOnWin,
-                                       value: true
-                                    }
-                                    ),
-                                    el.label({className:'radioPureCSS1'},
-                                        el.span(null,
-                                            el.span(null)
-                                        ),
-                                        el.label(null, "Increase Bet")
-                                    ),
-                                    el.label({className:'autoRollInputLabel'}, "x"),
+                        el.div({className:'row'},
+                            el.div({className: 'col-lg-3 col-md-3 col-sm-3 col-xs-3'}, ' '),
+                            el.div({className:'col-lg-6 col-md-6 col-sm-6 col-xs-6 input-group'},
                                     el.input(
                                         {
                                             type:'text',
-                                            className:'returnAmount',
-                                            onChange: this._setMultiOnWin,
-                                            value: betStore.state.multiOnWin
+                                            className:'returnAmount form-control input-lg',
+                                            onChange: this._setStopMaxBalance,
+                                            value: betStore.state.stopMaxBalance
                                         }
+                                    ),
+                                    el.span(
+                                        {className: 'input-group-addon'},
+                                        'Bits'
                                     )
-                                )
+                              ),
+                              el.div({className: 'col-lg-3 col-md-3 col-sm-3 col-xs-3'}, ' ')
+                            )
+                      )   
+                  ),
+                  el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                      el.p(null, "Stop if balance <")
+                  ),
+                  el.div({className:'col-lg-12 col-md-12 col-sm-12 col-xs-12'},
+                    el.div({className:'automateBackground'},
+                        el.div({className:'row'},
+                            el.div({className: 'col-lg-3 col-md-3 col-sm-3 col-xs-3'}, ' '),
+                            el.div({className:'col-lg-6 col-md-6 col-sm-6 col-xs-6 input-group'},
+                                    el.input(
+                                        {
+                                            type:'text',
+                                            className:'returnAmount form-control input-lg',
+                                            onChange: this._setStopMinBalance,
+                                            value: betStore.state.stopMinBalance
+                                        }
+                                    ),
+                                    el.span(
+                                        {className: 'input-group-addon'},
+                                        'Bits'
+                                    )
+                              ),
+                              el.div({className: 'col-lg-3 col-md-3 col-sm-3 col-xs-3'}, ' ')
                             )
                       )   
                   )
