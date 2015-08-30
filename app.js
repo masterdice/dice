@@ -614,7 +614,7 @@ var betStore = new Store('bet', {
         betStore.state.automaticToggle = true;
         var balance = worldStore.state.user.balance / 100;
         var stop = false;
-        if(betStore.state.checkBoxNumberOfBet === 'true' && (betStore.state.betCounter + 1)z == self.state.NumberOfBetLimit.str){
+        if(betStore.state.checkBoxNumberOfBet === 'true' && betStore.state.betCounter == self.state.NumberOfBetLimit.str){
             stop = true;
         } 
         if (!isNaN(parseInt(betStore.state.stopMinBalance))) {
@@ -2013,9 +2013,6 @@ var ToggleAutomaticRoll = React.createClass({
                       hash: hash,
                       isFair: CryptoJS.SHA256(bet.secret + '|' + bet.salt).toString() === hash
                     };
-
-                    bet.wager = wagerSatoshis;
-                    bet.uname = worldStore.state.user.uname;
                     
                     Dispatcher.sendAction('CHANGE_TAB', 'MY_BETS');
                     Dispatcher.sendAction('NEW_BET', bet);
